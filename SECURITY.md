@@ -19,11 +19,12 @@ No account or cross-device synchronization is currently implemented.
 
 Deploy only through the protected gateway described in
 [the deployment guide](docs/deployment.md). Keep the container private. Runtime
-uses a separate service account with read access to its dictionary database and
-pull access to its own image registry. Gateway invocation rights are scoped to
-the application container. Model import uses an operator identity separately.
+uses a separate service account with pull access to its own image registry.
+The dictionary is bundled into the image and verified at startup; application
+requests need no cloud database or IAM credentials. Gateway invocation rights
+are scoped to the application container.
 
-Limits are enforced at the gateway, container revision, application, and database.
+Limits are enforced at the gateway, container revision, and application.
 Instance caps in Yandex Cloud apply **per availability zone**. Billing alerts are
 notifications, not a spending cap; gateway and security traffic can still cost money.
 

@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 from backend.store import VectorStore
-from scripts.prepare_model import DEFAULT_MODEL_ID, DIMENSIONS, MODEL_SPECS, prepare, read_word2vec
+from scripts.prepare_model import DIMENSIONS, MODEL_ID, prepare, read_word2vec
 
 
 def binary_model(words, vectors):
@@ -28,11 +28,10 @@ def test_word2vec_import_preserves_source_bytes_and_builds_usable_dictionary(tmp
                                                "vocabulary size": len(words)}))
         zipped.writestr("model.bin", binary_model(words, vectors))
         zipped.writestr("README", "Source attribution")
-    monkeypatch.setitem(MODEL_SPECS, DEFAULT_MODEL_ID,
-                        {**MODEL_SPECS[DEFAULT_MODEL_ID], "count": len(words)})
+    monkeypatch.setattr("scripts.prepare_model.SOURCE_COUNT", len(words))
     output = tmp_path / "dictionary"
-    manifest = prepare(archive, output, DEFAULT_MODEL_ID)
-    assert manifest["model_id"] == DEFAULT_MODEL_ID
+    manifest = prepare(archive, output)
+    assert manifest["model_id"] == MODEL_ID
     assert manifest["tagset"] == "UPoS"
     assert manifest["pos_filter"] == "NOUN"
     assert manifest["count"] == 2
@@ -49,12 +48,12 @@ def test_word2vec_import_preserves_source_bytes_and_builds_usable_dictionary(tmp
     assert store.vector("короновать_VERB") is None
     np.testing.assert_allclose(first["vector"], vectors[0] / np.linalg.norm(vectors[0]), rtol=1e-6)
     assert store.nearest(first["vector"], ["король"])["word"] == "королева"
-    assert prepare(archive, output, DEFAULT_MODEL_ID) == manifest
+    assert prepare(archive, output) == manifest
     with (output / "vectors.npy").open("r+b") as file:
         file.seek(-1, 2)
         file.write(b"\x00")
     with pytest.raises(ValueError, match="integrity check"):
-        prepare(archive, output, DEFAULT_MODEL_ID)
+        prepare(archive, output)
 
 
 @pytest.mark.parametrize("problem", ["header", "truncated", "duplicate"])

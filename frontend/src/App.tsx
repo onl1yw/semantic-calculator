@@ -133,9 +133,9 @@ export function App() {
           href="https://github.com/onl1yw/semantic-calculator"
           target="_blank"
           rel="noopener noreferrer"
-          aria-label="Открыть проект на GitHub"
+          aria-label="Проект Михаила Шифрина (onl1yw) на GitHub"
         >
-          GitHub <ArrowUpRight aria-hidden="true" size={13} strokeWidth={1.7} />
+          onl1yw · GitHub <ArrowUpRight aria-hidden="true" size={13} strokeWidth={1.7} />
         </a>
       )}
     </div>

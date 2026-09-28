@@ -22,18 +22,7 @@ class Settings:
     global_search_per_minute: int = 240
     global_search_burst: int = 4
     max_clients: int = 2048
-    store_backend: str = "local"
     verify_dictionary: bool = False
-    ydb_endpoint: str = ""
-    ydb_database: str = ""
-    ydb_query_timeout: float = 1.0
-
-    def __post_init__(self):
-        if self.store_backend not in {"local", "ydb"}:
-            raise ValueError("SC_STORE_BACKEND must be local or ydb")
-        if self.store_backend == "ydb":
-            if not self.ydb_endpoint.startswith("grpcs://") or not self.ydb_database.startswith("/"):
-                raise ValueError("YDB requires SC_YDB_ENDPOINT with TLS and SC_YDB_DATABASE")
 
     @classmethod
     def from_env(cls):

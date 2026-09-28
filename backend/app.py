@@ -63,9 +63,6 @@ def create_app(settings=None, store=None):
     async def lifespan(app):
         if store is not None:
             app.state.store = store
-        elif settings.store_backend == "ydb":
-            from .ydb_store import YdbStore
-            app.state.store = YdbStore(settings)
         else:
             app.state.store = VectorStore(settings.data_dir, verify=settings.verify_dictionary)
         app.state.search = SearchService(app.state.store, settings)
@@ -85,13 +82,6 @@ def create_app(settings=None, store=None):
         # Validation details can contain the submitted vector. Do not echo it.
         return JSONResponse({"detail": "Некорректный запрос: проверьте слово, ревизию и 300 чисел вектора."},
                             status_code=422)
-
-    from .ydb_client import StoreUnavailable
-
-    @app.exception_handler(StoreUnavailable)
-    async def unavailable(_, __):
-        return JSONResponse({"detail": "Словарь временно недоступен. Попробуйте позже."},
-                            status_code=503, headers={"Retry-After": "1"})
 
     @app.get("/api/health")
     async def health():

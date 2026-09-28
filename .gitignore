@@ -8,7 +8,6 @@ output/
 .playwright-cli/
 vector-store/
 local/
-geowac_lemmas_none_fasttextskipgram_300_5_2020*
 *.bin
 *.vec
 *.model

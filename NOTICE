@@ -1,0 +1,22 @@
+Semantic Calculator
+Copyright (c) 2026 Mikhail Shifrin (onl1yw)
+https://github.com/onl1yw/semantic-calculator
+
+Original project materials use the Semantic Calculator Attribution License 1.0.
+See LICENSE for the attribution requirements.
+
+Third-party materials retain their original licenses:
+
+- Word2Vec model ruwikiruscorpora_upos_skipgram_300_2_2019:
+  RusVectores / NLPL; Andrey Kutuzov.
+  The model catalog specifies CC BY. Model weights and derived dictionary data
+  remain subject to the original model terms; see docs/model.md.
+  https://rusvectores.org/ru/models/
+  https://vectors.nlpl.eu/repository/20/182.zip
+
+- Lucide icons, including the Sigma favicon:
+  Copyright (c) Lucide Icons and Contributors, ISC License.
+  The favicon contains its copyright and permission notice.
+  https://lucide.dev/license
+
+- Other dependencies retain the licenses distributed with their packages.
