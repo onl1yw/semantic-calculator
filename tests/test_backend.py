@@ -111,7 +111,7 @@ def test_search_timeout_keeps_capacity_until_worker_finishes(settings):
     release = Event()
 
     class SlowStore:
-        def nearest(self, _):
+        def nearest(self, _, exclude_words=()):
             release.wait(1)
             return {"word": "done"}
 
@@ -174,3 +174,51 @@ def test_only_frontend_files_are_public(settings, dictionary, tmp_path):
         assert client.get("/data/dictionary/words.json").status_code == 404
         assert client.get("/models/model.model").status_code == 404
         assert client.get("/../words.json").status_code == 404
+
+
+def test_search_excludes_inputs_without_changing_vectors(client, dictionary):
+    vector = [1., .75, .5, .25] + [0.] * 296
+    before = dictionary.vectors.copy()
+    excluded = client.post("/api/nearest", json={**query(vector),
+                           "exclude_words": ["КОРОЛЬ", "несуществующее"]})
+    assert excluded.status_code == 200
+    assert excluded.json()["word"] == "королева"
+    assert excluded.json()["similarity"] == pytest.approx(.75 / np.linalg.norm(vector))
+    assert client.post("/api/nearest", json=query(vector)).json()["word"] == "король"
+    np.testing.assert_array_equal(before, dictionary.vectors)
+
+
+def test_excluding_every_candidate_fails_explicitly(client):
+    result = client.post("/api/nearest", json={**query(),
+                         "exclude_words": ["король", "королева", "мужчина", "женщина"]})
+    assert result.status_code == 422
+    assert "word" not in result.json()
+
+
+@pytest.mark.parametrize("excluded", [[1], [""], ["а" * 129], ["а"] * 129, "король"])
+def test_exclusion_list_is_bounded_and_validated(client, excluded):
+    assert client.post("/api/nearest", json={**query(), "exclude_words": excluded}).status_code == 422
+
+
+def test_tagged_model_uses_plain_words_and_excludes_every_pos_variant(settings, tmp_path):
+    words = ["печь_NOUN", "печь_VERB", "печь_ADJ", "королева_NOUN"]
+    vectors = np.eye(len(words), 300, dtype=np.float32)
+    (tmp_path / "words.json").write_text(json.dumps(words))
+    np.save(tmp_path / "vectors.npy", vectors)
+    (tmp_path / "manifest.json").write_text(json.dumps({"model_id": "tagged", "model_revision": "test-v1",
+                                                       "dimensions": 300, "count": len(words), "tagset": "UPoS"}))
+    store = VectorStore(tmp_path)
+    with TestClient(create_app(settings, store)) as connection:
+        assert connection.get("/api/words", params={"prefix": "ПЕ"}).json()["words"] == ["печь"]
+        first = connection.get("/api/words/ПЕЧЬ/vector").json()
+        assert first["word"] == "печь"
+        assert first["vector"] == vectors[0].tolist()
+        explicit = connection.get("/api/words/печь_VERB/vector").json()
+        assert explicit["word"] == "печь"
+        assert explicit["vector"] == vectors[1].tolist()
+        vector = [.5, 1., .75, .25] + [0.] * 296
+        assert connection.post("/api/nearest", json=query(vector)).json()["word"] == "печь"
+        for excluded in (["ПЕЧЬ"], ["печь_VERB"]):
+            result = connection.post("/api/nearest", json={**query(vector), "exclude_words": excluded})
+            assert result.json()["word"] == "королева"
+    assert VectorStore.lemma("слово_UNKNOWN") == "слово_UNKNOWN"

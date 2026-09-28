@@ -2,6 +2,7 @@ import { DIMENSIONS, validVector } from "./math.ts";
 import type { Operator } from "./math.ts";
 
 export const STORAGE_KEY = "semantic-calculator:state:v1";
+export const MAX_SOURCE_WORDS = 128;
 export interface Model {
   model_id: string;
   model_revision: string;
@@ -13,6 +14,7 @@ export interface Operand {
   vector: number[];
   expression: string;
   similarity?: number;
+  sourceWords?: string[];
 }
 export interface HistoryEntry extends Operand {
   id: string;
@@ -27,6 +29,8 @@ export interface CalculatorState {
   operation: Operator | null;
   draft: string;
   memory: number[] | null;
+  memoryWord?: string;
+  memorySourceWords?: string[];
   history: HistoryEntry[];
 }
 type StorageLike = Pick<Storage, "getItem" | "setItem">;
@@ -41,8 +45,55 @@ export function emptyState(model: Model): CalculatorState {
     operation: null,
     draft: "",
     memory: null,
+    memorySourceWords: [],
     history: [],
   };
+}
+
+export function mergeSourceWords(...groups: string[][]): string[] {
+  const words = [...new Set(groups.flat().map((word) =>
+    word.trim().normalize("NFC").toLocaleLowerCase("ru"),
+  ).filter(Boolean))];
+  if (words.length > MAX_SOURCE_WORDS)
+    throw new Error("В одной цепочке можно использовать до 128 разных слов. Начните новую кнопкой AC.");
+  return words;
+}
+
+export function operandSources(operand: Operand): string[] {
+  if (operand.sourceWords) return operand.sourceWords;
+  // Recover inputs from expressions saved before source tracking was added.
+  if (operand.expression === "Память") return [];
+  return mergeSourceWords(
+    operand.expression.replace(/−\(/gu, "").replace(/\)/gu, "")
+      .split(/\s+[+−×÷]\s+/u).filter((word) => word !== "…"),
+  );
+}
+
+export function memorySources(state: CalculatorState): string[] {
+  if (state.memorySourceWords) return state.memorySourceWords;
+  if (!state.memory) return [];
+  // Older memory did not record inputs; recover them when its vector is known.
+  const match = [state.right, state.current, ...state.history].find((operand) =>
+    operand && operand.vector.every((value, i) => value === state.memory![i]),
+  );
+  return match ? operandSources(match) : [];
+}
+
+export function knownMemoryWord(state: CalculatorState): string | undefined {
+  if (!state.memory) return undefined;
+  if (state.memoryWord) return state.memoryWord;
+  if (!state.memory.some((n) => n !== 0)) return "0";
+  return [state.right, state.current, ...state.history].find((operand) =>
+    operand && operand.vector.every((value, i) => value === state.memory![i]),
+  )?.word;
+}
+
+function validSources(value: unknown): boolean {
+  return value === undefined || (Array.isArray(value) &&
+    value.length <= MAX_SOURCE_WORDS && value.every((word) =>
+      typeof word === "string" && word.length > 0 && word.length <= 128 &&
+      word.trim().length > 0,
+    ));
 }
 
 function validOperand(value: unknown): value is Operand {
@@ -55,6 +106,7 @@ function validOperand(value: unknown): value is Operand {
     item.expression.length <= 2048 &&
     validVector(item.vector) &&
     item.vector.some((n) => n !== 0) &&
+    validSources(item.sourceWords) &&
     (item.similarity === undefined ||
       (typeof item.similarity === "number" &&
         Number.isFinite(item.similarity) &&
@@ -87,11 +139,14 @@ export function restore(
       (item.current !== null && !validOperand(item.current)) ||
       (item.right !== null && !validOperand(item.right)) ||
       (item.memory !== null && !validVector(item.memory)) ||
+      (item.memoryWord !== undefined && (typeof item.memoryWord !== "string" ||
+        !item.memoryWord.trim() || item.memoryWord.length > 128)) ||
+      !validSources(item.memorySourceWords) ||
       ![null, "+", "−", "×", "÷"].includes(item.operation) ||
       (item.right !== null && (!item.current || !item.operation)) ||
       (item.operation !== null && !item.current) ||
       typeof item.draft !== "string" ||
-      item.draft.length > 64 ||
+      item.draft.length > 1024 ||
       !Array.isArray(item.history) ||
       item.history.length > 50 ||
       !item.history.every(

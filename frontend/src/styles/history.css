@@ -1,0 +1,113 @@
+.history-panel {
+  position: fixed;
+  z-index: 3;
+  inset: 0;
+  margin: auto;
+  width: min(100%, 460px);
+  padding: max(24px, env(safe-area-inset-top)) 24px
+    max(52px, env(safe-area-inset-bottom));
+  background: #000;
+  overflow-y: auto;
+}
+.history-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 17px;
+}
+.history-tabs {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-width: 0;
+}
+.history-tabs button {
+  padding: 8px 0;
+  background: transparent;
+  color: #77777c;
+  font-size: clamp(20px, 5vw, 25px);
+  font-weight: 400;
+  letter-spacing: -0.8px;
+  white-space: nowrap;
+}
+.history-tabs button[aria-selected="true"] {
+  color: #ececea;
+}
+.history-heading > button {
+  background: transparent;
+  color: #94949b;
+  font-size: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+}
+.clear-history {
+  color: #a8a8ac;
+  font-size: 11px;
+  background: transparent;
+  padding: 0 0 15px;
+}
+.history-panel ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.history-panel ol li {
+  border-top: 1px solid #ffffff0e;
+}
+.history-panel ol li > button {
+  background: transparent;
+  text-align: left;
+  color: #eee;
+  width: 100%;
+  padding: 17px 0;
+}
+.history-expression {
+  display: block;
+  color: #8d8d95;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+  line-height: 1.6;
+}
+.history-result {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 25px;
+  font-weight: 300;
+  margin: 7px 0;
+  color: #e6e6e7;
+  overflow-wrap: anywhere;
+}
+.history-result > svg {
+  color: var(--orange);
+  flex-shrink: 0;
+}
+time {
+  font-size: 9px;
+  color: #636369;
+}
+.history-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin-top: 110px;
+  color: #aaa;
+}
+.history-empty > svg {
+  width: 35px;
+  height: 35px;
+  color: #66666e;
+}
+.history-empty p {
+  font-size: 15px;
+  margin: 20px 0 10px;
+}
+.history-empty > span {
+  font-size: 12px;
+  color: #73737c;
+  line-height: 1.65;
+}

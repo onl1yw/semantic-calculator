@@ -77,7 +77,7 @@ class ApiGuard:
                 message.setdefault("headers", []).extend([
                     (b"x-content-type-options", b"nosniff"),
                     (b"referrer-policy", b"no-referrer"),
-                    (b"content-security-policy", b"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'"),
+                    (b"content-security-policy", b"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'none'"),
                     (b"permissions-policy", b"camera=(), microphone=(), geolocation=()"),
                 ])
                 if scope["path"].startswith("/api/"):

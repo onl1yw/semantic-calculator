@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--data", type=Path, default=ROOT / "data" / "dictionary")
+    parser.add_argument("--data", type=Path, default=ROOT / "data" / "dictionary-word2vec-nouns")
     parser.add_argument("--output", type=Path, default=ROOT / "data" / "dictionary-export.jsonl.gz")
     args = parser.parse_args()
     vectors = np.load(args.data / "vectors.npy", mmap_mode="r", allow_pickle=False)

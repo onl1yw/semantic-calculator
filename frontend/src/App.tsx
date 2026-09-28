@@ -1,499 +1,90 @@
-import { useEffect, useRef, useState } from "react";
-import { calculate, validVector } from "./math.ts";
-import type { Operator } from "./math.ts";
-import { health, nearest, suggest, wordVector } from "./api.ts";
-import { persist, restore } from "./storage.ts";
-import type {
-  CalculatorState,
-  HistoryEntry,
-  Model,
-  Operand,
-} from "./storage.ts";
-
-const EXAMPLES = [
-  "король",
-  "мужчина",
-  "женщина",
-  "кошка",
-  "собака",
-  "человек",
-  "день",
-  "ночь",
-  "солнце",
-];
-const OPS: Operator[] = ["÷", "×", "−", "+"];
-
-function insertOperand(
-  state: CalculatorState,
-  operand: Operand,
-): CalculatorState {
-  return state.current && state.operation
-    ? { ...state, right: operand, draft: "" }
-    : { ...state, current: operand, right: null, operation: null, draft: "" };
-}
-
-function historyEntry(operand: Operand): HistoryEntry {
-  return { ...operand, id: crypto.randomUUID(), timestamp: Date.now() };
-}
-
-async function withDraft(
-  state: CalculatorState,
-  model: Model,
-): Promise<CalculatorState> {
-  return state.draft.trim()
-    ? insertOperand(state, await wordVector(state.draft.trim(), model))
-    : state;
-}
-
-async function finish(
-  state: CalculatorState,
-  model: Model,
-): Promise<CalculatorState> {
-  const next = await withDraft(state, model);
-  if (!next.current) throw new Error("Сначала введите слово.");
-  if (!next.operation) return next;
-  if (!next.right)
-    throw new Error("Введите второе слово или выберите его из подсказок.");
-  const vector = calculate(
-    next.current.vector,
-    next.operation,
-    next.right.vector,
-  );
-  let expression = `${next.current.expression} ${next.operation} ${next.right.expression}`;
-  if (expression.length > 2048)
-    expression = `… ${next.current.word} ${next.operation} ${next.right.word}`;
-  const operand = await nearest(vector, expression, model);
-  return {
-    ...next,
-    current: operand,
-    right: null,
-    operation: null,
-    history: [historyEntry(operand), ...next.history].slice(0, 50),
-  };
-}
-
-function HistoryIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M4 11a8 8 0 1 1 2 6M4 5v6h6M12 8v5l3 2"
-        stroke="currentColor"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function KeyboardIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <rect
-        x="2"
-        y="5"
-        width="20"
-        height="14"
-        rx="2"
-        stroke="currentColor"
-        strokeWidth="1.5"
-      />
-      <path
-        d="M6 9h1m4 0h1m4 0h1M6 12h1m4 0h1m4 0h1M7 16h10"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
+import { useEffect, useState } from "react";
+import { ArrowUpRight } from "lucide-react";
+import { CalculatorDisplay } from "./components/CalculatorDisplay.tsx";
+import { CalculatorKeypad } from "./components/CalculatorKeypad.tsx";
+import { HistoryPanel } from "./components/HistoryPanel.tsx";
+import { MemoryBar } from "./components/MemoryBar.tsx";
+import { Redefine } from "./components/Redefine.tsx";
+import { useCalculator } from "./hooks/useCalculator.ts";
+import { useWordSuggestions } from "./hooks/useWordSuggestions.ts";
 
 export function App() {
-  const [model, setModel] = useState<Model | null>(null);
-  const [state, setState] = useState<CalculatorState | null>(null);
-  const stateRef = useRef<CalculatorState | null>(null);
-  const [busy, setBusy] = useState(false);
-  const busyRef = useRef(false);
-  const [error, setError] = useState("");
-  const [warning, setWarning] = useState("");
+  const calculator = useCalculator();
+  const {
+    model,
+    state,
+    busy,
+    error,
+    warning,
+    typing,
+    inputRef,
+    personal,
+    disabled,
+    hasOperand,
+  } = calculator;
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [matches, setMatches] = useState<string[]>([]);
-  const [suggestionIndex, setSuggestionIndex] = useState(-1);
-  const input = useRef<HTMLInputElement>(null);
-
-  const boot = async () => {
-    setError("");
-    try {
-      const info = await health();
-      let restored;
-      try {
-        restored = restore(info, window.localStorage);
-      } catch {
-        restored = {
-          state: restore(info, { getItem: () => null, setItem: () => {} })
-            .state,
-          warning: "Сохранение недоступно. Можно продолжить в этой вкладке.",
-        };
-      }
-      stateRef.current = restored.state;
-      setState(restored.state);
-      setModel(info);
-      setWarning(restored.warning || "");
-    } catch (cause) {
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : "Не удалось подключиться к словарю.",
-      );
-    }
-  };
+  const suggestions = useWordSuggestions(
+    state?.draft || "",
+    model,
+    personal.definitions,
+  );
 
   useEffect(() => {
-    void boot();
-  }, []);
-
-  const commit = (next: CalculatorState) => {
-    stateRef.current = next;
-    setState(next);
-    try {
-      if (!persist(next, window.localStorage))
-        setWarning(
-          "Сохранение недоступно. Результаты останутся в этой вкладке.",
-        );
-    } catch {
-      setWarning("Сохранение недоступно. Результаты останутся в этой вкладке.");
-    }
-  };
-
-  useEffect(() => {
-    const prefix = state?.draft.trim() || "";
-    setMatches([]);
-    setSuggestionIndex(-1);
-    if (prefix.length < 2 || !model) return;
-    const controller = new AbortController();
-    const timeout = window.setTimeout(() => {
-      void suggest(prefix, controller.signal)
-        .then((response) => setMatches(response.words))
-        .catch(() => {});
-    }, 220);
-    return () => {
-      window.clearTimeout(timeout);
-      controller.abort();
-    };
-  }, [state?.draft, model]);
-
-  const run = async (
-    work: (
-      snapshot: CalculatorState,
-      model: Model,
-    ) => Promise<CalculatorState> | CalculatorState,
-  ) => {
-    if (busyRef.current || !stateRef.current || !model) return;
-    busyRef.current = true;
-    setBusy(true);
-    setError("");
-    try {
-      commit(await work(stateRef.current, model));
-    } catch (cause) {
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : "Не удалось выполнить действие.",
-      );
-    } finally {
-      busyRef.current = false;
-      setBusy(false);
-    }
-  };
-
-  const choose = (word: string) =>
-    run(async (snapshot, info) =>
-      insertOperand(snapshot, await wordVector(word, info)),
-    );
-
-  const operate = (op: Operator) =>
-    run(async (snapshot, info) => {
-      let next = await withDraft(snapshot, info);
-      if (next.operation && next.right) next = await finish(next, info);
-      if (!next.current) throw new Error("Сначала введите слово.");
-      return { ...next, operation: op, right: null, draft: "" };
-    });
-
-  const addMemory = () =>
-    run((snapshot) => {
-      const active = snapshot.right || snapshot.current;
-      if (!active)
-        throw new Error("Сначала введите слово или получите результат.");
-      const vector = snapshot.memory
-        ? snapshot.memory.map((n, i) => n + active.vector[i])
-        : [...active.vector];
-      if (!validVector(vector))
-        throw new Error("Вектор памяти слишком большой.");
-      return { ...snapshot, memory: vector };
-    });
-
-  const recall = () =>
-    run(async (snapshot, info) => {
-      if (!snapshot.memory)
-        throw new Error("Память пока пуста. Сохраните результат кнопкой M+.");
-      return insertOperand(
-        snapshot,
-        await nearest(snapshot.memory, "Память", info),
-      );
-    });
-
-  const negate = () =>
-    run(async (snapshot, info) => {
-      const active = snapshot.right || snapshot.current;
-      if (!active) throw new Error("Сначала введите слово.");
-      const vector = active.vector.map((n) => -n);
-      const expression =
-        active.expression.length < 2044
-          ? `−(${active.expression})`
-          : `−(${active.word})`;
-      const operand = await nearest(vector, expression, info);
-      return snapshot.right
-        ? { ...snapshot, right: operand }
-        : { ...snapshot, current: operand };
-    });
-
-  const clear = () => {
-    if (busyRef.current || !stateRef.current) return;
-    commit({
-      ...stateRef.current,
-      current: null,
-      right: null,
-      operation: null,
-      draft: "",
-    });
-    setError("");
-    input.current?.focus();
-  };
-
-  const active = state?.right || state?.current;
-  const disabled = !state || busy;
-  const keys =
-    state?.draft.trim().length && state.draft.trim().length >= 2
-      ? matches.slice(0, 9)
-      : EXAMPLES;
-  const trail =
-    state?.operation && state.current
-      ? `${state.current.word} ${state.operation} ${state.right?.word || "…"}`
-      : active?.expression || "";
+    if (typing && !busy && !personal.isOpen && !historyOpen)
+      inputRef.current?.focus();
+  }, [typing, busy, personal.isOpen, historyOpen]);
 
   return (
     <div className="app-shell">
       <main className="workspace">
         <section className="calculator" aria-label="Калькулятор слов">
-          <div className="display" aria-live="polite">
-            <div className="expression" title={trail}>
-              {trail}
-            </div>
-            <div
-              className={`result ${!active ? "placeholder" : ""} ${active && active.word.length > 14 ? "long-result" : ""}`}
-              data-testid="result"
-            >
-              {active?.word || "0"}
-            </div>
-          </div>
-
-          <div className="memory-row">
-            <button
-              disabled={disabled || !state?.memory}
-              onClick={() => state && commit({ ...state, memory: null })}
-              aria-label="MC — очистить память"
-            >
-              MC
-            </button>
-            <button
-              disabled={disabled || !state?.memory}
-              onClick={() => void recall()}
-              aria-label="MR — вызвать память"
-            >
-              MR
-            </button>
-            <button
-              disabled={disabled || !active}
-              onClick={() => void addMemory()}
-              aria-label="M+ — добавить в память"
-            >
-              M+
-            </button>
-            <button
-              className={`history-toggle ${historyOpen ? "is-active" : ""}`}
-              aria-label="История вычислений"
-              aria-expanded={historyOpen}
-              onClick={() => setHistoryOpen(!historyOpen)}
-            >
-              <HistoryIcon />
-            </button>
-          </div>
-
-          <form
-            className="word-form"
-            onSubmit={(event) => {
-              event.preventDefault();
-              void run(finish);
-            }}
-          >
-            <input
-              ref={input}
-              aria-label="Введите слово"
-              role="combobox"
-              aria-autocomplete="list"
-              aria-expanded={matches.length > 0}
-              aria-controls="word-options"
-              aria-activedescendant={
-                suggestionIndex >= 0
-                  ? `word-option-${suggestionIndex}`
-                  : undefined
-              }
-              maxLength={64}
-              autoComplete="off"
-              spellCheck={false}
-              disabled={disabled}
-              value={state?.draft || ""}
-              placeholder={
-                state?.operation ? "Второе слово…" : "Введите слово…"
-              }
-              onChange={(event) => {
-                if (state) commit({ ...state, draft: event.target.value });
-                setError("");
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "ArrowDown" && matches.length) {
-                  event.preventDefault();
-                  setSuggestionIndex(
-                    (n) => (n + 1) % Math.min(matches.length, 9),
-                  );
-                }
-                if (event.key === "ArrowUp" && matches.length) {
-                  event.preventDefault();
-                  setSuggestionIndex(
-                    (n) =>
-                      (n - 1 + Math.min(matches.length, 9)) %
-                      Math.min(matches.length, 9),
-                  );
-                }
-                if (
-                  event.key === "Enter" &&
-                  suggestionIndex >= 0 &&
-                  matches[suggestionIndex]
-                ) {
-                  event.preventDefault();
-                  void choose(matches[suggestionIndex]);
-                }
-                if (event.key === "Escape") {
-                  event.preventDefault();
-                  clear();
-                }
-              }}
-            />
-            <button
-              className="enter-word"
-              type="button"
-              aria-label="Добавить введённое слово"
-              disabled={disabled || !state?.draft.trim()}
-              onClick={() => state && void choose(state.draft.trim())}
-            >
-              ↵
-            </button>
-          </form>
-
-          <div
-            className="keypad"
-            id="word-options"
-            role="group"
-            aria-label="Слова и операции"
-          >
-            <button className="key utility" disabled={disabled} onClick={clear}>
-              AC
-            </button>
-            <button
-              className="key utility"
-              disabled={disabled || !active}
-              onClick={() => void negate()}
-              aria-label="Изменить знак вектора"
-            >
-              +/−
-            </button>
-            <button
-              className="key utility"
-              disabled={disabled}
-              aria-label="Удалить последнюю букву"
-              onClick={() => {
-                if (state)
-                  commit({ ...state, draft: state.draft.slice(0, -1) });
-                input.current?.focus();
-              }}
-            >
-              ⌫
-            </button>
-            <button
-              className={`key operator ${state?.operation === "÷" ? "selected" : ""}`}
-              disabled={disabled}
-              aria-label="Деление"
-              aria-pressed={state?.operation === "÷"}
-              onClick={() => void operate("÷")}
-            >
-              ÷
-            </button>
-            {[0, 1, 2].map((row) => (
-              <div className="key-row" key={row}>
-                {[0, 1, 2].map((col) => {
-                  const i = row * 3 + col;
-                  const word = keys[i];
-                  return (
-                    <button
-                      id={`word-option-${i}`}
-                      className={`key word-key ${suggestionIndex === i ? "highlighted" : ""}`}
-                      key={col}
-                      disabled={disabled || !word}
-                      onClick={() => word && void choose(word)}
-                      title={word}
-                    >
-                      {word || "·"}
-                    </button>
-                  );
-                })}
-                <button
-                  className={`key operator ${state?.operation === OPS[row + 1] ? "selected" : ""}`}
-                  disabled={disabled}
-                  aria-label={
-                    {
-                      "×": "Умножение",
-                      "−": "Вычитание",
-                      "+": "Сложение",
-                      "÷": "Деление",
-                    }[OPS[row + 1]]
-                  }
-                  aria-pressed={state?.operation === OPS[row + 1]}
-                  onClick={() => void operate(OPS[row + 1])}
-                >
-                  {OPS[row + 1]}
-                </button>
-              </div>
-            ))}
-            <button
-              className="key type-key"
-              disabled={disabled}
-              aria-label="Ввести слово"
-              onClick={() => input.current?.focus()}
-            >
-              <KeyboardIcon />
-            </button>
-            <button
-              className="key operator equals"
-              disabled={disabled}
-              aria-label="Равно"
-              onClick={() => void run(finish)}
-            >
-              =
-            </button>
-          </div>
-
+          <CalculatorDisplay
+            state={state}
+            typing={typing}
+            disabled={disabled}
+            error={error}
+            warning={warning}
+            inputRef={inputRef}
+            matches={suggestions.matches}
+            highlighted={suggestions.highlighted}
+            onHighlight={suggestions.setHighlighted}
+            onChange={calculator.changeDraft}
+            onChoose={(word, complete) =>
+              void calculator.choose(word, complete)
+            }
+            onSubmit={() => void calculator.complete(true)}
+            onCancel={calculator.cancelTyping}
+          />
+          <MemoryBar
+            state={state}
+            disabled={disabled}
+            hasOperand={hasOperand}
+            typing={typing}
+            error={error}
+            historyOpen={historyOpen}
+            onClear={calculator.clearMemory}
+            onRecall={() => void calculator.recall()}
+            onAdd={() => void calculator.remember()}
+            onToggleHistory={() => setHistoryOpen(!historyOpen)}
+          />
+          <CalculatorKeypad
+            disabled={disabled}
+            hasOperand={hasOperand}
+            typing={typing}
+            operation={state?.operation}
+            words={suggestions.words}
+            highlighted={suggestions.highlighted}
+            onClear={calculator.clear}
+            onChangeSign={() => void calculator.changeSign()}
+            onRedefine={() => void personal.open()}
+            onOperator={(op) => void calculator.selectOperator(op)}
+            onChoose={(word) => void calculator.choose(word)}
+            onType={calculator.typeWord}
+            onEquals={() => void calculator.complete()}
+          />
           {(error || warning) && (
             <div
+              id="input-feedback"
               className={`feedback ${error ? "has-error" : ""}`}
               role="status"
             >
@@ -501,68 +92,52 @@ export function App() {
             </div>
           )}
           {!model && error && (
-            <button className="retry" onClick={() => void boot()}>
+            <button className="retry" onClick={() => void calculator.boot()}>
               Повторить подключение
             </button>
           )}
         </section>
-
         {historyOpen && (
-          <aside className="history-panel" aria-label="История">
-            <div className="history-heading">
-              <h2>История</h2>
-              <button
-                aria-label="Закрыть историю"
-                onClick={() => setHistoryOpen(false)}
-              >
-                ×
-              </button>
-            </div>
-            {state?.history.length ? (
-              <>
-                <button
-                  className="clear-history"
-                  disabled={busy}
-                  onClick={() => commit({ ...state, history: [] })}
-                >
-                  Очистить историю
-                </button>
-                <ol>
-                  {state.history.map((entry) => (
-                    <li key={entry.id}>
-                      <button
-                        disabled={busy}
-                        onClick={() => {
-                          if (state) commit(insertOperand(state, entry));
-                          setHistoryOpen(false);
-                        }}
-                      >
-                        <span className="history-expression">
-                          {entry.expression}
-                        </span>
-                        <span className="history-result">
-                          {entry.word}
-                          <span>↗</span>
-                        </span>
-                        <time>
-                          {new Date(entry.timestamp).toLocaleTimeString("ru", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </time>
-                      </button>
-                    </li>
-                  ))}
-                </ol>
-              </>
-            ) : (
-              <div className="history-empty">
-                <p>История пуста.</p>
-              </div>
-            )}
-          </aside>
+          <HistoryPanel
+            history={state?.history || []}
+            definitions={personal.definitions}
+            disabled={disabled}
+            canUndo={personal.canUndo}
+            onClose={() => setHistoryOpen(false)}
+            onClearHistory={calculator.clearHistory}
+            onSelectHistory={(entry) => {
+              calculator.selectHistory(entry);
+              setHistoryOpen(false);
+            }}
+            onEdit={personal.edit}
+            onUseWord={(name) => {
+              void calculator.choose(name);
+              setHistoryOpen(false);
+            }}
+            onRemove={personal.remove}
+            onUndo={personal.undo}
+          />
         )}
       </main>
+      {personal.isOpen && (
+        <Redefine
+          context={personal.context}
+          editing={personal.editing}
+          onClose={personal.close}
+          onSave={personal.save}
+        />
+      )}
+      {!historyOpen && !personal.isOpen && (
+        <a
+          className="project-link"
+          href="https://github.com/onl1yw/semantic-calculator"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Открыть проект на GitHub"
+        >
+          GitHub <ArrowUpRight aria-hidden="true" size={13} strokeWidth={1.7} />
+        </a>
+      )}
     </div>
   );
 }

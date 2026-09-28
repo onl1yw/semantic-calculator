@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
-if [[ ! -f data/dictionary/manifest.json ]]; then
+if [[ ! -f "${SC_DATA_DIR:-data/dictionary-word2vec-nouns}/manifest.json" ]]; then
   echo "Prepare the model first: .venv/bin/python scripts/prepare_model.py"
   exit 1
 fi

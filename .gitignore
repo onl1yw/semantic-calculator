@@ -71,6 +71,10 @@ credentials/
 *.tfstate
 *.tfstate.*
 .terraform/
+*.tfvars
+*.tfvars.json
+*.tfplan
+!*.tfvars.example
 
 # Python environments and caches.
 .venv/

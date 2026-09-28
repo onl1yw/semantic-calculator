@@ -1,0 +1,119 @@
+.redefine-dialog {
+  width: min(448px, calc(100% - 32px));
+  max-width: calc(100% - 32px);
+  max-height: calc(100svh - 48px);
+  padding: 24px;
+  border: 1px solid #2a2a2c;
+  border-radius: 24px;
+  background: #000;
+  color: #ececea;
+  overflow-y: auto;
+}
+.redefine-dialog::backdrop {
+  background: #000d;
+  backdrop-filter: blur(5px);
+}
+.redefine-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.redefine-heading h2 {
+  margin: 0;
+}
+.dialog-close,
+.remove-definition,
+.personal-use {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  background: transparent;
+  color: #a2a2a7;
+  flex-shrink: 0;
+}
+.definition-tabs {
+  display: flex;
+  margin: 0 0 16px;
+  gap: 9px;
+}
+.definition-tabs .key {
+  flex: 1;
+  height: 56px;
+  aspect-ratio: auto;
+  border-radius: 50px;
+  font-size: clamp(12px, 3vw, 14px);
+}
+.definition-expression {
+  margin: 0;
+}
+.definition-display {
+  margin-top: 12px;
+}
+.definition-expression-input {
+  margin-top: 0;
+  color: #77777c;
+}
+.definition-help {
+  font-size: 12px;
+  line-height: 1.5;
+  color: #77777c;
+  margin: 0 0 18px;
+}
+.key.definition-save {
+  width: 100%;
+  height: 72px;
+  aspect-ratio: auto;
+  border-radius: 50px;
+  font-size: 24px;
+}
+.definition-error {
+  color: #ffb173;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.undo-definition {
+  background: transparent;
+  color: var(--orange);
+  font-size: 11px;
+  padding: 8px 0;
+}
+.personal-use {
+  color: var(--orange);
+}
+.personal-list {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0 20px;
+}
+.personal-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid #ffffff0e;
+}
+.personal-entry {
+  flex: 1;
+  min-width: 0;
+  padding: 13px 0;
+  background: transparent;
+  color: #ececea;
+  text-align: left;
+}
+.personal-entry strong,
+.personal-entry span {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.personal-entry strong {
+  font-size: 14px;
+  line-height: 1.5;
+  font-weight: 400;
+}
+.personal-entry span {
+  font-size: 11px;
+  line-height: 1.5;
+  color: #77777c;
+  margin-top: 4px;
+}

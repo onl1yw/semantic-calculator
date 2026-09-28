@@ -1,12 +1,13 @@
 import { normalize } from "./math.ts";
+import { mergeSourceWords } from "./storage.ts";
 import type { Model, Operand } from "./storage.ts";
 
 export class ApiError extends Error {
-  constructor(
-    message: string,
-    public status: number,
-  ) {
+  public status: number;
+
+  constructor(message: string, status: number) {
     super(message);
+    this.status = status;
   }
 }
 
@@ -49,7 +50,8 @@ export async function wordVector(word: string, model: Model): Promise<Operand> {
   );
   if (data.model_revision !== model.model_revision)
     throw new Error("Модель обновилась. Перезагрузите страницу.");
-  const value = { word: data.word, vector: data.vector, expression: data.word };
+  const value = { word: data.word, vector: data.vector, expression: data.word,
+    sourceWords: [data.word] };
   if (cache.size >= 100) cache.delete(cache.keys().next().value!);
   cache.set(key, value);
   return value;
@@ -59,7 +61,9 @@ export async function nearest(
   vector: number[],
   expression: string,
   model: Model,
+  sourceWords: string[] = [],
 ): Promise<Operand> {
+  const sources = mergeSourceWords(sourceWords);
   const data = await request<Model & { word: string; similarity: number }>(
     "/api/nearest",
     {
@@ -68,8 +72,10 @@ export async function nearest(
       body: JSON.stringify({
         model_revision: model.model_revision,
         vector: normalize(vector),
+        exclude_words: sources,
       }),
     },
   );
-  return { word: data.word, similarity: data.similarity, vector, expression };
+  return { word: data.word, similarity: data.similarity, vector, expression,
+    sourceWords: sources };
 }

@@ -1,7 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { calculate } from "./math.ts";
-import { emptyState, persist, restore, STORAGE_KEY } from "./storage.ts";
+import {
+  emptyState, knownMemoryWord, memorySources, mergeSourceWords, operandSources, persist, restore, STORAGE_KEY,
+} from "./storage.ts";
 
 const model = {
   model_id: "test",
@@ -74,4 +76,68 @@ test("storage failures do not require a server fallback", () => {
   };
   assert.equal(persist(emptyState(model), blocked), false);
   assert.deepEqual(restore(model, blocked).state, emptyState(model));
+});
+
+test("source words survive chains, memory, history, and reload", () => {
+  const sources = mergeSourceWords(["Король", "мужчина"], ["женщина", "КОРОЛЬ"]);
+  assert.deepEqual(sources, ["король", "мужчина", "женщина"]);
+  const operand = {
+    word: "правитель", vector: Array(300).fill(3),
+    expression: "король − мужчина + женщина", sourceWords: sources,
+  };
+  const state = {
+    ...emptyState(model), current: operand, memory: operand.vector,
+    memorySourceWords: sources,
+    history: [{ ...operand, id: "one", timestamp: 1 }],
+  };
+  const data = storage();
+  persist(state, data);
+  const loaded = restore(model, data).state;
+  assert.deepEqual(operandSources(loaded.current!), sources);
+  assert.deepEqual(memorySources(loaded), sources);
+  assert.deepEqual(operandSources(loaded.history[0]), sources);
+  assert.deepEqual(mergeSourceWords(memorySources(loaded), ["собака"]),
+    [...sources, "собака"]);
+});
+
+test("older saved expressions and known memory recover their source words", () => {
+  const operand = {
+    word: "король", vector: Array(300).fill(3),
+    expression: "−(король − мужчина) + женщина",
+  };
+  const state = { ...emptyState(model), current: operand, memory: operand.vector };
+  delete state.memorySourceWords;
+  const data = storage();
+  persist(state, data);
+  const loaded = restore(model, data).state;
+  assert.deepEqual(operandSources(loaded.current!), ["король", "мужчина", "женщина"]);
+  assert.deepEqual(memorySources(loaded), ["король", "мужчина", "женщина"]);
+});
+
+test("invalid source metadata is rejected and long chains fail explicitly", () => {
+  const data = storage();
+  const state = { ...emptyState(model), memorySourceWords: [1] };
+  data.setItem(STORAGE_KEY, JSON.stringify(state));
+  assert.ok(restore(model, data).warning);
+  assert.throws(() => mergeSourceWords(Array.from({ length: 129 }, (_, i) => `слово${i}`)),
+    /128/);
+});
+
+test("memory labels and expression drafts survive reload, including legacy known memory", () => {
+  const data = storage();
+  const current = { word: "королева", vector: Array(300).fill(3), expression: "король − мужчина + женщина" };
+  const state = { ...emptyState(model), current, memory: current.vector,
+    memoryWord: "королева", draft: "король − мужчина + женщина + королева + мужчина + женщина + король" };
+  assert.ok(state.draft.length > 64);
+  persist(state, data);
+  assert.deepEqual(restore(model, data).state, state);
+  assert.equal(knownMemoryWord({ ...state, memoryWord: undefined }), "королева");
+});
+
+test("invalid memory labels and oversized drafts are rejected on reload", () => {
+  const data = storage();
+  for (const patch of [{ memoryWord: 42 }, { memoryWord: "" }, { draft: "а".repeat(1025) }]) {
+    data.setItem(STORAGE_KEY, JSON.stringify({ ...emptyState(model), ...patch }));
+    assert.ok(restore(model, data).warning);
+  }
 });

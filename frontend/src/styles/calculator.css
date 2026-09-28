@@ -1,0 +1,260 @@
+.display {
+  min-height: 130px;
+  padding: 16px 0 20px;
+  text-align: right;
+}
+.expression {
+  color: #77777c;
+  font-size: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  height: 22px;
+  line-height: 22px;
+}
+.result {
+  font-size: 56px;
+  font-weight: 300;
+  letter-spacing: -2px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  margin-top: 8px;
+}
+.result.long-result {
+  font-size: 34px;
+  letter-spacing: -1px;
+}
+.display-form {
+  margin: 0;
+}
+.result-input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  text-align: right;
+  caret-color: var(--orange);
+}
+.result-input:focus-visible {
+  outline: none;
+}
+.result-input::placeholder {
+  color: #77777c;
+}
+.empty-result {
+  color: #77777c;
+}
+.result-error {
+  color: #ffb173;
+  letter-spacing: -1px;
+}
+.display.has-error .result-input {
+  font-size: 18px;
+  letter-spacing: 0;
+  margin-top: 2px;
+}
+.memory-row {
+  display: flex;
+  align-items: center;
+  padding-bottom: 16px;
+  gap: 16px;
+}
+.memory-row button {
+  background: transparent;
+  color: #a2a2a7;
+  padding: 3px 0;
+  font-size: 13px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.memory-row button:disabled {
+  color: #3a3a3e;
+}
+.memory-row button:hover:not(:disabled) {
+  color: var(--orange);
+}
+.memory-value {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: #77777c;
+}
+.similarity {
+  color: #a2a2a7;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.memory-row .similarity + .history-toggle {
+  margin-left: 0;
+}
+.memory-row .history-toggle {
+  margin-left: auto;
+  padding: 3px;
+  line-height: 0;
+}
+.history-toggle svg {
+  width: 22px;
+  height: 22px;
+}
+.key.type-key svg {
+  width: 29px;
+  height: 29px;
+}
+.keypad {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 9px;
+}
+.key-row {
+  display: contents;
+}
+.key {
+  height: 72px;
+  border-radius: 50%;
+  background: #2a2a2c;
+  color: #eee;
+  font-size: 27px;
+  font-weight: 400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  min-width: 0;
+  line-height: 1;
+}
+.key svg {
+  display: block;
+  flex-shrink: 0;
+}
+.key.operator svg {
+  width: 34px;
+  height: 34px;
+}
+.key.utility {
+  background: #a5a5a5;
+  color: #090909;
+  font-size: 24px;
+  font-weight: 400;
+}
+.key.utility:hover:not(:disabled) {
+  background: #d0d0d0;
+}
+.key.operator {
+  background: var(--orange);
+  color: white;
+  font-size: 36px;
+  font-weight: 300;
+}
+.key.operator:hover:not(:disabled) {
+  background: #ffbc50;
+}
+.key.operator.selected {
+  background: #fff;
+  color: var(--orange);
+}
+.key.word-key {
+  font-size: 11px;
+  letter-spacing: -0.1px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.key.word-key:hover:not(:disabled),
+.key.word-key.highlighted {
+  background: #4a4a4c;
+}
+.key:disabled {
+  opacity: 0.45;
+}
+.key.word-key:disabled {
+  opacity: 0.3;
+}
+.key.type-key {
+  grid-column: span 3;
+  border-radius: 50px;
+  justify-content: center;
+  font-size: 15px;
+  color: #c0c0c4;
+  gap: 13px;
+}
+.key.type-key:hover:not(:disabled) {
+  background: #444446;
+}
+.feedback {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #68686e;
+  padding: 10px 0 0;
+}
+.feedback.has-error {
+  color: #ffb173;
+}
+.retry {
+  display: block;
+  margin: 3px auto 6px;
+  background: #29292c;
+  color: #ddd;
+  border-radius: 8px;
+  padding: 9px;
+  font-size: 11px;
+}
+.key {
+  height: auto;
+  aspect-ratio: 1;
+}
+.key.type-key {
+  aspect-ratio: auto;
+}
+@media (max-width: 450px) {
+  .memory-row {
+    gap: 12px;
+  }
+  .display {
+    min-height: 115px;
+    padding-top: 8px;
+  }
+  .result {
+    font-size: 48px;
+  }
+  .result.long-result {
+    font-size: 30px;
+  }
+  .key.word-key {
+    font-size: 11px;
+  }
+}
+@media (max-height: 740px) {
+  .app-shell {
+    padding-top: max(16px, env(safe-area-inset-top));
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+  .display {
+    min-height: 100px;
+    padding-top: 0;
+    padding-bottom: 14px;
+  }
+  .result {
+    font-size: 43px;
+  }
+  .key {
+    aspect-ratio: auto;
+    height: clamp(48px, 10svh, 72px);
+  }
+}
