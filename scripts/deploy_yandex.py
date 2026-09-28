@@ -8,17 +8,23 @@ import shutil
 import subprocess
 
 from scripts.yandex_gateway import gateway_spec
+from scripts.yandex_probe import probe_private, wait_for_scaling
 
 ROOT = Path(__file__).resolve().parent.parent
 NAME = "semantic-calculator"
 
 
+def has_public_bindings(bindings):
+    # YC represents public access as subject type "system", id "allUsers".
+    public = {"allUsers", "allAuthenticatedUsers"}
+    return any(item.get("subject", {}).get("id") in public or
+               item.get("subject", {}).get("type") in public for item in bindings)
+
+
 def revision_command(container_id, deployment, image):
     environment = {
-        "SC_STORE_BACKEND": "ydb", "SC_VERIFY_DICTIONARY": "true",
-        "SC_YDB_ENDPOINT": deployment["ydb_endpoint"],
-        "SC_YDB_DATABASE": deployment["ydb_database"], "YDB_METADATA_CREDENTIALS": "1",
-        "SC_SEARCH_CONCURRENCY": "2", "SC_SEARCH_TIMEOUT": "2", "SC_YDB_QUERY_TIMEOUT": "1",
+        "SC_VERIFY_DICTIONARY": "true",
+        "SC_SEARCH_CONCURRENCY": "2", "SC_SEARCH_TIMEOUT": "2",
         "SC_GLOBAL_PER_MINUTE": "240", "SC_GLOBAL_BURST": "10",
         "SC_GLOBAL_SEARCH_PER_MINUTE": "60", "SC_GLOBAL_SEARCH_BURST": "2",
     }
@@ -36,16 +42,20 @@ def verify_revision(revision):
     limits = revision.get("scaling_policy", {})
     provision = revision.get("provision_policy", {})
     resources = revision.get("resources", {})
-    checks = [int(limits.get("zone_instances_limit", 0)) == 1,
+    environment = revision.get("image", {}).get("environment", {})
+    checks = [revision.get("status") == "ACTIVE",
+              int(limits.get("zone_instances_limit", 0)) == 1,
               int(limits.get("zone_requests_limit", 0)) == 4,
               int(provision.get("min_instances", 0)) == 0,
               int(revision.get("concurrency", 0)) == 4,
               0 < int(resources.get("memory", 0)) <= 256 * 1024 * 1024,
               int(resources.get("cores", 0)) == 1,
               int(resources.get("core_fraction", 0)) == 20,
-              revision.get("execution_timeout") == "3s"]
+              revision.get("execution_timeout") == "3s",
+              environment.get("SC_VERIFY_DICTIONARY") == "true",
+              not any("YDB" in name or name == "SC_STORE_BACKEND" for name in environment)]
     if not all(checks):
-        raise RuntimeError("Revision limits were not confirmed; gateway will not be connected")
+        raise RuntimeError("Revision limits or local dictionary settings were not confirmed; gateway will not be connected")
 
 
 def main():
@@ -77,28 +87,29 @@ def main():
         raise RuntimeError("Release target must be the dedicated project folder")
     for kind, identifier in (("cloud", deployment["cloud_id"]), ("folder", deployment["folder_id"])):
         bindings = call("resource-manager", kind, "list-access-bindings", identifier)
-        if any(item["subject"]["type"] in {"allUsers", "allAuthenticatedUsers"} for item in bindings):
+        if has_public_bindings(bindings):
             raise RuntimeError("Project inherits public cloud/folder rights; review IAM first")
-    database = call("ydb", "database", "get", deployment["database_id"])
-    limits = database.get("serverless_database", {})
-    if (not limits.get("enable_throttling_rcu_limit") or int(limits.get("throttling_rcu_limit", 0)) > 10
-            or int(limits.get("provisioned_rcu_limit", 0)) != 0
-            or not 0 < int(limits.get("storage_size_limit", 0)) <= 1024 ** 3):
-        raise RuntimeError("YDB cost limits were not confirmed")
     containers = call("serverless", "container", "list")
     container = next((item for item in containers if item["name"] == NAME), None)
     if container is None:
         container = call("serverless", "container", "create", "--name", NAME)
     identifier = container["id"]
     bindings = call("serverless", "container", "list-access-bindings", "--id", identifier)
-    if any(item["subject"]["type"] in {"allUsers", "allAuthenticatedUsers"} for item in bindings):
+    if has_public_bindings(bindings):
         raise RuntimeError("Container has public invocation rights; review IAM first")
+    gateway_subject = "serviceAccount:" + deployment["gateway_account_id"]
+    if any(item["subject"]["id"] == deployment["gateway_account_id"] and
+           item["role_id"] == "serverless-containers.containerInvoker" for item in bindings):
+        call("serverless", "container", "remove-access-binding", "--id", identifier,
+             "--role", "serverless-containers.containerInvoker", "--subject", gateway_subject)
     revision = call(*revision_command(identifier, deployment, args.image))
     confirmed = call("serverless", "container", "revision", "get", revision["id"])
     verify_revision(confirmed)
+    wait_for_scaling()
+    probe_private(container, yc)
     call("serverless", "container", "add-access-binding", "--id", identifier,
          "--role", "serverless-containers.containerInvoker",
-         "--subject", "serviceAccount:" + deployment["gateway_account_id"])
+         "--subject", gateway_subject)
     output = ROOT / "output/deployment"
     output.mkdir(parents=True, exist_ok=True)
     spec = output / "gateway.json"
@@ -108,7 +119,9 @@ def main():
     existing = next((item for item in gateways if item["name"] == NAME), None)
     command = ["serverless", "api-gateway", "update" if existing else "create"]
     command += ["--id", existing["id"]] if existing else ["--name", NAME]
-    result = call(*command, "--spec", str(spec), "--execution-timeout", "3s", "--no-logging")
+    # Startup can exceed the container's request execution limit; allow the
+    # gateway to wait for a cold instance while keeping container compute at 3s.
+    result = call(*command, "--spec", str(spec), "--execution-timeout", "10s", "--no-logging")
     print(json.dumps({"container_id": identifier, "revision_id": confirmed["id"],
                       "gateway_id": result["id"], "domain": result.get("domain")}, indent=2))
 

@@ -2,7 +2,7 @@ resource "yandex_iam_service_account" "runtime" {
   depends_on  = [terraform_data.target]
   name        = "semantic-calculator-runtime"
   folder_id   = var.folder_id
-  description = "Reads the dictionary and pulls the application image."
+  description = "Pulls the application image; dictionary is bundled locally."
 }
 
 resource "yandex_iam_service_account" "gateway" {

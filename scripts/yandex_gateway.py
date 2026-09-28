@@ -21,6 +21,7 @@ def gateway_spec(container_id, account_id, security_profile_id):
     paths = {
         "/": {"get": operation("frontend")},
         "/favicon.svg": {"get": operation("favicon")},
+        "/card.png": {"get": operation("socialCard")},
         "/assets/{file+}": {"get": operation("assets", [parameter("file", limit=256)])},
         "/api/health": {"get": operation("health")},
         "/api/words": {"get": operation("suggest", [parameter("prefix", "query")])},

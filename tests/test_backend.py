@@ -1,7 +1,8 @@
 import asyncio
 from dataclasses import replace
-from hashlib import sha256
+from hashlib import file_digest, sha256
 import json
+import socket
 from threading import Event
 
 from fastapi import HTTPException
@@ -171,7 +172,7 @@ def test_only_frontend_files_are_public(settings, dictionary, tmp_path):
     (public / "index.html").write_text("<html>Calculator</html>")
     with TestClient(create_app(replace(settings, frontend_dir=public), dictionary)) as client:
         assert client.get("/").status_code == 200
-        assert client.get("/data/dictionary/words.json").status_code == 404
+        assert client.get("/data/dictionary-word2vec-nouns/words.json").status_code == 404
         assert client.get("/models/model.model").status_code == 404
         assert client.get("/../words.json").status_code == 404
 
@@ -222,3 +223,44 @@ def test_tagged_model_uses_plain_words_and_excludes_every_pos_variant(settings, 
             result = connection.post("/api/nearest", json={**query(vector), "exclude_words": excluded})
             assert result.json()["word"] == "королева"
     assert VectorStore.lemma("слово_UNKNOWN") == "слово_UNKNOWN"
+
+
+def test_application_starts_and_serves_dictionary_without_network(settings, dictionary, monkeypatch):
+    def forbidden_connection(*args, **kwargs):
+        raise AssertionError("Dictionary operations must not open network connections")
+
+    monkeypatch.setattr(socket.socket, "connect", forbidden_connection)
+    with TestClient(create_app(settings)) as client:
+        assert client.get("/api/health").status_code == 200
+        assert client.get("/api/words", params={"prefix": "кор"}).json()["words"] == ["королева", "король"]
+        word = client.get("/api/words/король/vector").json()
+        assert client.post("/api/nearest", json=query(word["vector"])).json()["word"] == "король"
+
+
+@pytest.mark.parametrize("filename", ["words.json", "vectors.npy"])
+def test_application_checks_snapshot_hashes_at_startup(settings, dictionary, filename):
+    manifest_path = settings.data_dir / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["files_sha256"] = {}
+    for name in ("words.json", "vectors.npy"):
+        with (settings.data_dir / name).open("rb") as stream:
+            manifest["files_sha256"][name] = file_digest(stream, "sha256").hexdigest()
+    manifest_path.write_text(json.dumps(manifest))
+    verified = replace(settings, verify_dictionary=True)
+    with TestClient(create_app(verified)) as client:
+        assert client.get("/api/health").status_code == 200
+    with (settings.data_dir / filename).open("ab") as stream:
+        stream.write(b"corrupt")
+    with pytest.raises(ValueError, match="integrity"):
+        with TestClient(create_app(verified)):
+            pass
+
+
+def test_environment_validates_dictionary_verification_boolean(monkeypatch):
+    monkeypatch.setenv("SC_VERIFY_DICTIONARY", "false")
+    assert not Settings.from_env().verify_dictionary
+    monkeypatch.setenv("SC_VERIFY_DICTIONARY", "true")
+    assert Settings.from_env().verify_dictionary
+    monkeypatch.setenv("SC_VERIFY_DICTIONARY", "invalid")
+    with pytest.raises(ValueError, match="true or false"):
+        Settings.from_env()
