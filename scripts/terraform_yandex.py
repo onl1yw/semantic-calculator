@@ -30,8 +30,8 @@ def main():
                 raise RuntimeError("YC did not return an IAM token")
             environment["YC_TOKEN"] = token
         # SDK debug logging can include authentication headers.
-        environment.pop("TF_LOG", None)
-        environment.pop("TF_LOG_PROVIDER", None)
+        for name in ("TF_LOG", "TF_LOG_CORE", "TF_LOG_PROVIDER", "TF_LOG_PATH"):
+            environment.pop(name, None)
     command = [terraform, "-chdir=" + str(ROOT / "infra/yandex"), args.command, *extra]
     raise SystemExit(subprocess.run(command, env=environment).returncode)
 

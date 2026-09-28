@@ -40,7 +40,7 @@ def verify_revision(revision):
               int(limits.get("zone_requests_limit", 0)) == 4,
               int(provision.get("min_instances", 0)) == 0,
               int(revision.get("concurrency", 0)) == 4,
-              int(resources.get("memory", 0)) <= 256 * 1024 * 1024,
+              0 < int(resources.get("memory", 0)) <= 256 * 1024 * 1024,
               int(resources.get("cores", 0)) == 1,
               int(resources.get("core_fraction", 0)) == 20,
               revision.get("execution_timeout") == "3s"]
@@ -70,7 +70,7 @@ def main():
         result = subprocess.run([yc, *command, "--folder-id", deployment["folder_id"],
                                  "--cloud-id", deployment["cloud_id"], "--format", "json"],
                                 check=True, text=True, capture_output=True)
-        return json.loads(result.stdout)
+        return json.loads(result.stdout) if result.stdout.strip() else {}
 
     folder = call("resource-manager", "folder", "get", deployment["folder_id"])
     if folder["name"] != NAME or folder["cloud_id"] != deployment["cloud_id"]:

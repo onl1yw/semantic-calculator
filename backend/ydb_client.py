@@ -23,12 +23,13 @@ class YdbConnection:
             self.driver.stop()
             raise
 
-    def execute(self, query, parameters=None, timeout=None):
+    def execute(self, query, parameters=None, timeout=None, retries=0):
         duration = timeout or self.timeout
         try:
             return self.pool.execute_with_retries(
                 query, parameters or {},
-                retry_settings=ydb.RetrySettings(max_retries=0, max_session_acquire_timeout=.2),
+                retry_settings=ydb.RetrySettings(max_retries=retries, max_session_acquire_timeout=.2,
+                                                idempotent=True),
                 settings=ydb.BaseRequestSettings().with_timeout(duration),
             )
         except ydb.Error as error:

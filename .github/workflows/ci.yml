@@ -22,6 +22,7 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
+          fetch-depth: 0
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.14"
@@ -38,6 +39,8 @@ jobs:
       - run: npm test --prefix frontend
       - run: npm run build --prefix frontend
       - run: git diff --check
+      - name: Scan files and Git history for secrets
+        run: python scripts/security_scan.py
       - name: Audit JavaScript dependencies
         run: npm audit --prefix frontend --audit-level=high
       - name: Audit Python dependencies

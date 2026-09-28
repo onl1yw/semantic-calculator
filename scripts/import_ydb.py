@@ -42,19 +42,19 @@ def upload_table(connection, table, store, lookup, pause):
     verify = (f"DECLARE $keys AS List<Utf8>; SELECT key, word, row_index, vector FROM `{table}` "
               "WHERE key IN $keys;")
     for number, batch in enumerate(batches(rows_for(store, lookup)), 1):
-        connection.execute(query, {"$rows": (batch, ydb.ListType(ROW_TYPE))}, timeout=30)
+        connection.execute(query, {"$rows": (batch, ydb.ListType(ROW_TYPE))}, timeout=30, retries=8)
         time.sleep(pause)
         # Verify the actual server-returned bytes before publishing this revision.
         result = connection.execute(verify, {
             "$keys": ([row["key"] for row in batch], ydb.ListType(ydb.PrimitiveType.Utf8)),
-        }, timeout=30)
+        }, timeout=30, retries=8)
         actual = {row["key"]: dict(row) for row in result[0].rows}
         if actual != {row["key"]: row for row in batch}:
             raise RuntimeError("YDB import verification failed; revision remains unpublished")
         if number % 25 == 0:
             print(f"{table}: verified {min(number * 100, len(lookup))}/{len(lookup)} rows", flush=True)
         time.sleep(pause)
-    result = connection.execute(f"SELECT COUNT(*) AS count FROM `{table}`;", timeout=30)
+    result = connection.execute(f"SELECT COUNT(*) AS count FROM `{table}`;", timeout=30, retries=8)
     if result[0].rows[0]["count"] != len(lookup):
         raise RuntimeError("Unexpected table row count; revision remains unpublished")
 
@@ -63,10 +63,10 @@ def publish(connection, store, pause=.2):
     revision = store.metadata["model_revision"]
     identity = descriptor(store)
     for query in schema_queries(revision):
-        connection.execute(query, timeout=30)
+        connection.execute(query, timeout=30, retries=8)
     existing = connection.execute(
         f"DECLARE $revision AS Utf8; SELECT descriptor FROM `{METADATA_TABLE}` WHERE revision=$revision;",
-        {"$revision": utf8(revision)}, timeout=30,
+        {"$revision": utf8(revision)}, timeout=30, retries=8,
     )[0].rows
     if existing:
         if existing[0]["descriptor"] != identity:
