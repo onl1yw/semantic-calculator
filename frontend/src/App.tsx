@@ -86,6 +86,28 @@ function HistoryIcon() {
   );
 }
 
+function KeyboardIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect
+        x="2"
+        y="5"
+        width="20"
+        height="14"
+        rx="2"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
+      <path
+        d="M6 9h1m4 0h1m4 0h1M6 12h1m4 0h1m4 0h1M7 16h10"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 export function App() {
   const [model, setModel] = useState<Model | null>(null);
   const [state, setState] = useState<CalculatorState | null>(null);
@@ -257,84 +279,12 @@ export function App() {
   const trail =
     state?.operation && state.current
       ? `${state.current.word} ${state.operation} ${state.right?.word || "…"}`
-      : active?.expression || "Слова. Смыслы. Арифметика.";
+      : active?.expression || "";
 
   return (
     <div className="app-shell">
-      <header className="masthead">
-        <a
-          className="brand"
-          href="/"
-          aria-label="Семантический калькулятор — главная"
-        >
-          <span className="brand-mark">=</span>
-          <span>
-            semantic<span className="brand-soft"> / calculator</span>
-          </span>
-        </a>
-        <span className="edition">
-          РУССКИЙ ЯЗЫК <span className="edition-dot" /> ВЕРСИЯ 01
-        </span>
-      </header>
-
       <main className="workspace">
-        <section className="intro">
-          <div className="eyebrow">
-            <span /> АРИФМЕТИКА СМЫСЛОВ
-          </div>
-          <h1>
-            А если <br />
-            складывать <br />
-            <em>слова?</em>
-          </h1>
-          <p className="intro-copy">
-            Знакомый калькулятор.
-            <br />
-            Совсем другой результат.
-          </p>
-          <div
-            className="example-formula"
-            aria-label="Пример: король минус мужчина плюс женщина"
-          >
-            <span>король</span>
-            <b>−</b>
-            <span>мужчина</span>
-            <b>+</b>
-            <span>женщина</span>
-            <b>=</b>
-            <span className="formula-unknown">?</span>
-          </div>
-          <p className="instruction">
-            Введите слово, выберите действие,
-            <br />
-            добавьте второе слово — и нажмите <span>=</span>.
-          </p>
-          <div className="intro-bottom">
-            <span className="privacy-icon">⌁</span>
-            <p>
-              Ваши вычисления и память
-              <br />
-              сохраняются в этом браузере.
-            </p>
-          </div>
-        </section>
-
         <section className="calculator" aria-label="Калькулятор слов">
-          <div className="calc-topline">
-            <span className="status">
-              <i className={model ? "online" : ""} />
-              {model ? "СЛОВАРЬ ГОТОВ" : "ПОДКЛЮЧЕНИЕ"}
-            </span>
-            <button
-              className={`history-toggle ${historyOpen ? "is-active" : ""}`}
-              aria-label="История вычислений"
-              aria-expanded={historyOpen}
-              onClick={() => setHistoryOpen(!historyOpen)}
-            >
-              <HistoryIcon />
-            </button>
-          </div>
-
           <div className="display" aria-live="polite">
             <div className="expression" title={trail}>
               {trail}
@@ -343,19 +293,7 @@ export function App() {
               className={`result ${!active ? "placeholder" : ""} ${active && active.word.length > 14 ? "long-result" : ""}`}
               data-testid="result"
             >
-              {active?.word || "слово"}
-            </div>
-            <div className="display-bottom">
-              <span className="memory-indicator">
-                {state?.memory ? "M · в памяти" : "память пуста"}
-              </span>
-              <span>
-                {busy
-                  ? "Ищем слово…"
-                  : active?.similarity !== undefined
-                    ? `${Math.round(active.similarity * 100)}% близости`
-                    : " "}
-              </span>
+              {active?.word || "0"}
             </div>
           </div>
 
@@ -381,7 +319,14 @@ export function App() {
             >
               M+
             </button>
-            <span className="memory-help">помнит смысл</span>
+            <button
+              className={`history-toggle ${historyOpen ? "is-active" : ""}`}
+              aria-label="История вычислений"
+              aria-expanded={historyOpen}
+              onClick={() => setHistoryOpen(!historyOpen)}
+            >
+              <HistoryIcon />
+            </button>
           </div>
 
           <form
@@ -391,7 +336,6 @@ export function App() {
               void run(finish);
             }}
           >
-            <span className="input-symbol">Aa</span>
             <input
               ref={input}
               aria-label="Введите слово"
@@ -533,9 +477,10 @@ export function App() {
             <button
               className="key type-key"
               disabled={disabled}
+              aria-label="Ввести слово"
               onClick={() => input.current?.focus()}
             >
-              <span>Aa</span> своё слово
+              <KeyboardIcon />
             </button>
             <button
               className="key operator equals"
@@ -547,15 +492,14 @@ export function App() {
             </button>
           </div>
 
-          <div className={`feedback ${error ? "has-error" : ""}`} role="status">
-            {error ||
-              warning ||
-              (state?.draft.trim().length && state.draft.trim().length >= 2
-                ? matches.length
-                  ? "Выберите слово или нажмите ↵"
-                  : "Введите слово и нажмите ↵"
-                : "Считаем по одному действию")}
-          </div>
+          {(error || warning) && (
+            <div
+              className={`feedback ${error ? "has-error" : ""}`}
+              role="status"
+            >
+              {error || warning}
+            </div>
+          )}
           {!model && error && (
             <button className="retry" onClick={() => void boot()}>
               Повторить подключение
@@ -566,10 +510,7 @@ export function App() {
         {historyOpen && (
           <aside className="history-panel" aria-label="История">
             <div className="history-heading">
-              <div>
-                <span className="eyebrow">В ЭТОМ БРАУЗЕРЕ</span>
-                <h2>История</h2>
-              </div>
+              <h2>История</h2>
               <button
                 aria-label="Закрыть историю"
                 onClick={() => setHistoryOpen(false)}
@@ -616,33 +557,12 @@ export function App() {
               </>
             ) : (
               <div className="history-empty">
-                <HistoryIcon />
-                <p>Пока чистый лист.</p>
-                <span>
-                  Здесь появятся ваши вычисления.
-                  <br />
-                  Любой результат можно продолжить.
-                </span>
+                <p>История пуста.</p>
               </div>
             )}
           </aside>
         )}
       </main>
-
-      <footer className="footer">
-        <span>СЛОВА — ЭТО ТОЛЬКО НАЧАЛО.</span>
-        <span>
-          Модель{" "}
-          <a
-            href="https://rusvectores.org/ru/models/"
-            target="_blank"
-            rel="noreferrer"
-          >
-            RusVectōrēs
-          </a>{" "}
-          · GeoWAC · CC BY
-        </span>
-      </footer>
     </div>
   );
 }

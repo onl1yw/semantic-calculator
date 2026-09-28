@@ -1,12 +1,11 @@
 :root {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: #ececea;
-  background: #101011;
+  background: #000;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   --orange: #ff9f0a;
-  --muted: #838386;
 }
 * {
   box-sizing: border-box;
@@ -18,273 +17,77 @@ body {
 button,
 input {
   font: inherit;
-}
-button,
-a,
-input {
   -webkit-tap-highlight-color: transparent;
 }
 button {
   cursor: pointer;
   border: 0;
-}
-button:disabled {
-  cursor: default;
-}
-a {
-  color: inherit;
-}
-button:focus-visible,
-a:focus-visible,
-input:focus-visible {
-  outline: 2px solid var(--orange);
-  outline-offset: 4px;
-}
-button {
   transition:
     background 0.16s,
     transform 0.16s,
     opacity 0.16s;
 }
+button:disabled {
+  cursor: default;
+}
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--orange);
+  outline-offset: 4px;
+}
 button:active:not(:disabled) {
   transform: scale(0.95);
 }
 .app-shell {
-  max-width: 1240px;
-  margin: auto;
-  padding: 35px 58px 24px;
-}
-.masthead {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-bottom: 28px;
-  border-bottom: 1px solid #ffffff10;
-}
-.brand {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: -0.4px;
-  text-decoration: none;
-}
-.brand-mark {
-  color: var(--orange);
-  font-size: 33px;
-  font-weight: 300;
-  line-height: 1;
-}
-.brand-soft {
-  color: #77777b;
-  font-weight: 400;
-}
-.edition {
-  color: #747478;
-  font-size: 9px;
-  letter-spacing: 1.6px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.edition-dot {
-  width: 3px;
-  height: 3px;
-  background: #767678;
-  border-radius: 50%;
+  min-height: 100svh;
+  display: grid;
+  place-items: center;
+  padding: max(24px, env(safe-area-inset-top))
+    max(20px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom))
+    max(20px, env(safe-area-inset-left));
 }
 .workspace {
-  display: grid;
-  grid-template-columns: 1fr 392px;
-  gap: 80px;
-  align-items: center;
-  max-width: 1020px;
-  margin: 50px auto 60px;
-  position: relative;
-}
-.intro {
-  padding-bottom: 8px;
-}
-.eyebrow {
-  color: #99999c;
-  font-size: 10px;
-  letter-spacing: 2px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-weight: 500;
-}
-.eyebrow > span {
-  width: 17px;
-  height: 1px;
-  background: var(--orange);
-}
-h1 {
-  font-size: clamp(49px, 5.1vw, 68px);
-  line-height: 1.055;
-  font-weight: 500;
-  letter-spacing: -3.7px;
-  margin: 26px 0 24px;
-}
-h1 em {
-  font-style: normal;
-  color: var(--orange);
-}
-.intro-copy {
-  font-size: 18px;
-  line-height: 1.55;
-  letter-spacing: -0.25px;
-  color: #9b9b9e;
-  margin: 0;
-}
-.example-formula {
-  font-size: 13px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 9px;
-  align-items: center;
-  margin: 40px 0 22px;
-  color: #c7c7c8;
-}
-.example-formula b {
-  font-weight: 400;
-  color: var(--orange);
-  font-size: 20px;
-}
-.formula-unknown {
-  color: var(--orange);
-  font-size: 20px;
-}
-.instruction {
-  color: #77777b;
-  font-size: 13px;
-  line-height: 1.75;
-  margin: 0;
-}
-.instruction > span {
-  color: #ccc;
-}
-.intro-bottom {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-top: 65px;
-  color: #69696e;
-}
-.intro-bottom p {
-  font-size: 11px;
-  line-height: 1.55;
-  margin: 0;
-}
-.privacy-icon {
-  font-size: 32px;
-  font-weight: 200;
-  color: #7e7e82;
+  width: min(100%, 400px);
 }
 .calculator {
   width: 100%;
-  background: #050505;
-  border: 1px solid #ffffff12;
-  border-radius: 36px;
-  padding: 23px 22px 12px;
-  box-shadow:
-    0 28px 80px #0006,
-    0 2px 5px #0005;
-  position: relative;
-}
-.calc-topline {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.status {
-  font-size: 8px;
-  letter-spacing: 1.6px;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  color: #737376;
-}
-.status i {
-  height: 5px;
-  width: 5px;
-  border-radius: 50%;
-  background: #747478;
-}
-.status i.online {
-  background: #a1b893;
-  box-shadow: 0 0 8px #a1b89326;
-}
-.history-toggle {
-  background: transparent;
-  padding: 5px;
-  border-radius: 8px;
-  color: #737376;
-  line-height: 0;
-}
-.history-toggle svg {
-  width: 21px;
-  height: 21px;
-}
-.history-toggle:hover,
-.history-toggle.is-active {
-  color: var(--orange);
-  background: #ffffff0d;
 }
 .display {
-  padding: 25px 2px 18px;
+  min-height: 130px;
+  padding: 16px 0 20px;
   text-align: right;
-  min-height: 151px;
 }
 .expression {
   color: #77777c;
   font-size: 12px;
-  letter-spacing: 0.1px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   height: 18px;
 }
 .result {
-  font-size: 47px;
+  font-size: 56px;
   font-weight: 300;
   letter-spacing: -2px;
-  line-height: 1.35;
+  line-height: 1.25;
   overflow-wrap: anywhere;
   margin-top: 8px;
 }
-.result.placeholder {
-  color: #343436;
-}
 .result.long-result {
-  font-size: 32px;
+  font-size: 34px;
   letter-spacing: -1px;
-}
-.display-bottom {
-  display: flex;
-  justify-content: space-between;
-  font-size: 9px;
-  letter-spacing: 0.15px;
-  color: #6f6f74;
-  margin-top: 12px;
-  min-height: 12px;
-}
-.memory-indicator {
-  color: #7b7b7e;
 }
 .memory-row {
   display: flex;
   align-items: center;
-  padding: 0 2px 15px;
-  gap: 21px;
+  padding-bottom: 16px;
+  gap: 25px;
 }
 .memory-row button {
   background: transparent;
   color: #a2a2a7;
   padding: 3px 0;
-  font-size: 12px;
-  letter-spacing: 0.3px;
+  font-size: 13px;
 }
 .memory-row button:disabled {
   color: #3a3a3e;
@@ -292,10 +95,29 @@ h1 em {
 .memory-row button:hover:not(:disabled) {
   color: var(--orange);
 }
-.memory-help {
+.memory-row .history-toggle {
   margin-left: auto;
-  font-size: 9px;
-  color: #424247;
+  padding: 3px;
+  line-height: 0;
+}
+.history-toggle svg {
+  width: 22px;
+  height: 22px;
+}
+.key.type-key svg {
+  width: 29px;
+  height: 29px;
+}
+.history-panel {
+  position: fixed;
+  z-index: 3;
+  inset: 0;
+  margin: auto;
+  width: min(100%, 460px);
+  padding: max(24px, env(safe-area-inset-top)) 24px
+    max(24px, env(safe-area-inset-bottom));
+  background: #000;
+  overflow-y: auto;
 }
 .word-form {
   display: flex;
@@ -311,11 +133,6 @@ h1 em {
 }
 .word-form:focus-within {
   border-color: #ff9f0a65;
-}
-.input-symbol {
-  font-size: 14px;
-  color: #626267;
-  letter-spacing: -0.6px;
 }
 .word-form input {
   background: transparent;
@@ -447,29 +264,10 @@ h1 em {
   padding: 9px;
   font-size: 11px;
 }
-.history-panel {
-  position: absolute;
-  z-index: 3;
-  right: 415px;
-  top: 0;
-  width: 355px;
-  height: 100%;
-  max-height: 720px;
-  padding: 25px;
-  background: #19191b;
-  border: 1px solid #ffffff12;
-  border-radius: 24px;
-  box-shadow: 0 15px 50px #0009;
-  overflow-y: auto;
-}
 .history-heading {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-}
-.history-heading .eyebrow {
-  font-size: 8px;
-  letter-spacing: 1.4px;
 }
 h2 {
   font-size: 25px;
@@ -550,177 +348,47 @@ time {
   color: #73737c;
   line-height: 1.65;
 }
-.footer {
-  border-top: 1px solid #ffffff10;
-  padding-top: 23px;
-  display: flex;
-  justify-content: space-between;
-  font-size: 9px;
-  letter-spacing: 1px;
-  color: #5c5c62;
-  gap: 15px;
+
+.key {
+  height: auto;
+  aspect-ratio: 1;
 }
-.footer > span:last-child {
-  letter-spacing: 0;
-  font-size: 10px;
+.key.type-key {
+  aspect-ratio: auto;
+  justify-content: flex-start;
+  padding-left: 28px;
 }
-.footer a {
-  text-decoration: none;
-  color: #9b9b9f;
-}
-.footer a:hover {
-  color: var(--orange);
-}
-@media (min-width: 1400px) {
-  .workspace {
-    margin-top: 65px;
-    margin-bottom: 70px;
-  }
-}
-@media (max-width: 1000px) {
-  .app-shell {
-    padding: 25px 30px 23px;
-  }
-  .workspace {
-    gap: 35px;
-    grid-template-columns: 1fr 370px;
-    margin-top: 38px;
-  }
-  .key {
-    height: 67px;
-  }
-  h1 {
-    font-size: 55px;
-  }
-  .example-formula {
-    max-width: 270px;
-    gap: 7px;
-  }
-  .intro-bottom {
-    margin-top: 42px;
-  }
-  .history-panel {
-    right: 390px;
-    width: 310px;
-  }
-}
-@media (max-width: 740px) {
-  .app-shell {
-    padding: 20px 20px 22px;
-    max-width: 460px;
-  }
-  .masthead {
-    padding-bottom: 17px;
-  }
-  .brand {
-    font-size: 13px;
-  }
-  .edition {
-    display: none;
-  }
-  .workspace {
-    display: flex;
-    flex-direction: column;
-    gap: 22px;
-    margin: 25px auto 24px;
-    align-items: stretch;
-  }
-  .intro {
-    padding: 0 4px;
-  }
-  .eyebrow {
-    font-size: 8px;
-    letter-spacing: 1.7px;
-  }
-  h1 {
-    font-size: 30px;
-    line-height: 1.1;
-    letter-spacing: -1.2px;
-    margin: 11px 0 0;
-  }
-  h1 br {
-    display: none;
-  }
-  h1 br::after {
-    content: " ";
-  }
-  .intro-copy,
-  .example-formula,
-  .instruction,
-  .intro-bottom {
-    display: none;
-  }
-  .calculator {
-    max-width: 392px;
-    margin: 0 auto;
-    border-radius: 31px;
-    padding: 20px 19px 9px;
-  }
+@media (max-width: 450px) {
   .display {
-    padding-top: 22px;
-    min-height: 144px;
+    min-height: 115px;
+    padding-top: 8px;
   }
-  .key {
-    height: 73px;
+  .result {
+    font-size: 48px;
   }
-  .history-panel {
-    position: fixed;
-    inset: 70px 16px 22px;
-    width: auto;
-    height: auto;
-    max-height: none;
-    max-width: 410px;
-    margin: 0 auto;
-    background: #19191bf7;
-    backdrop-filter: blur(18px);
-  }
-  .footer {
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-    font-size: 8px;
-    letter-spacing: 0.7px;
-    padding-top: 16px;
-  }
-  .feedback {
-    min-height: 37px;
-  }
-}
-@media (max-width: 380px) {
-  .app-shell {
-    padding-left: 14px;
-    padding-right: 14px;
-  }
-  .calculator {
-    padding: 18px 15px 8px;
-  }
-  .key {
-    height: 64px;
-  }
-  .keypad {
-    gap: 8px;
+  .result.long-result {
+    font-size: 30px;
   }
   .key.word-key {
-    font-size: 10px;
+    font-size: 11px;
+  }
+}
+@media (max-height: 740px) {
+  .app-shell {
+    padding-top: max(16px, env(safe-area-inset-top));
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+  .display {
+    min-height: 100px;
+    padding-top: 0;
+    padding-bottom: 14px;
   }
   .result {
     font-size: 43px;
   }
-  .key.type-key {
-    font-size: 13px;
-    padding-left: 20px;
-  }
-  .memory-row {
-    padding-bottom: 12px;
-  }
-  .word-form {
-    margin-bottom: 14px;
-  }
-  h1 {
-    font-size: 26px;
-  }
-  .display {
-    min-height: 137px;
+  .key {
+    aspect-ratio: auto;
+    height: clamp(48px, 10svh, 72px);
   }
 }
 @media (prefers-reduced-motion: reduce) {
