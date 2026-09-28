@@ -4,6 +4,8 @@ datasets/
 models/
 downloads/
 artifacts/
+output/
+.playwright-cli/
 vector-store/
 local/
 geowac_lemmas_none_fasttextskipgram_300_5_2020*
@@ -85,6 +87,7 @@ node_modules/
 dist/
 build/
 .vite/
+*.tsbuildinfo
 .next/
 coverage/
 
