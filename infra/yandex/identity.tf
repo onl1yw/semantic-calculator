@@ -9,7 +9,7 @@ resource "yandex_iam_service_account" "gateway" {
   depends_on  = [terraform_data.target]
   name        = "semantic-calculator-gateway"
   folder_id   = var.folder_id
-  description = "Invokes only the application container; binding added at release."
+  description = "Invokes the application container and reads the private frontend bucket."
 }
 
 resource "yandex_container_registry" "application" {

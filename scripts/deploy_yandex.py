@@ -64,6 +64,7 @@ def main():
                         help="terraform output -json deployment saved to a local file")
     parser.add_argument("--image", required=True, help="Immutable registry image URL with @sha256 digest")
     parser.add_argument("--apply", action="store_true")
+    parser.add_argument("--frontend-dist", type=Path, default=ROOT / "frontend/dist")
     args = parser.parse_args()
     deployment = json.loads(args.foundation.read_text())
     if not re.fullmatch(r"cr\.yandex/" + re.escape(deployment["registry_id"]) +
@@ -74,12 +75,15 @@ def main():
                           "--folder-id", deployment["folder_id"]]))
         print("Container stays private; gateway is connected only after revision limits are verified.")
         return
+    from scripts.deploy_frontend import frontend_manifest, publish_frontend
+    # Reject an absent production build before changing container access.
+    frontend_manifest(args.frontend_dist, deployment["frontend_bucket"])
     yc = shutil.which("yc") or str(Path.home() / "yandex-cloud/bin/yc")
 
     def call(*command):
         result = subprocess.run([yc, *command, "--folder-id", deployment["folder_id"],
                                  "--cloud-id", deployment["cloud_id"], "--format", "json"],
-                                check=True, text=True, capture_output=True)
+                                check=True, text=True, capture_output=True, timeout=120)
         return json.loads(result.stdout) if result.stdout.strip() else {}
 
     folder = call("resource-manager", "folder", "get", deployment["folder_id"])
@@ -97,6 +101,7 @@ def main():
     bindings = call("serverless", "container", "list-access-bindings", "--id", identifier)
     if has_public_bindings(bindings):
         raise RuntimeError("Container has public invocation rights; review IAM first")
+    frontend = publish_frontend(call, deployment, args.frontend_dist)
     gateway_subject = "serviceAccount:" + deployment["gateway_account_id"]
     if any(item["subject"]["id"] == deployment["gateway_account_id"] and
            item["role_id"] == "serverless-containers.containerInvoker" for item in bindings):
@@ -112,9 +117,10 @@ def main():
          "--subject", gateway_subject)
     output = ROOT / "output/deployment"
     output.mkdir(parents=True, exist_ok=True)
+    (output / "frontend.json").write_text(json.dumps(frontend, indent=2))
     spec = output / "gateway.json"
     spec.write_text(json.dumps(gateway_spec(identifier, deployment["gateway_account_id"],
-                                          deployment["security_profile_id"]), indent=2))
+                                          deployment["security_profile_id"], frontend), indent=2))
     gateways = call("serverless", "api-gateway", "list")
     existing = next((item for item in gateways if item["name"] == NAME), None)
     command = ["serverless", "api-gateway", "update" if existing else "create"]
