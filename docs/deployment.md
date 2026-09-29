@@ -5,7 +5,9 @@
 ```mermaid
 flowchart LR
     Browser[Browser: arithmetic, history and personal dictionary] --> Gateway[API Gateway + Smart Web Security]
-    Gateway --> Container[Private Serverless Container: frontend + FastAPI]
+    Gateway --> HTML[Static HTML in the gateway specification]
+    Gateway --> Static[Private Object Storage: JS, CSS, favicon and preview image]
+    Gateway -->|/api/*| Container[Private Serverless Container: FastAPI]
     Container --> Snapshot[Immutable words and matrix in the image]
 ```
 
@@ -21,6 +23,20 @@ updating the model requires rebuilding and deploying the image.
 
 The browser communicates with one HTTPS origin. History, memory, and personal
 definitions remain in localStorage. The server persists no user calculations.
+
+The gateway returns the small HTML document directly, preserving its browser
+security headers. Static assets are read from a private STANDARD Object Storage
+bucket using the gateway account. GET and HEAD are supported for static routes.
+Only API routes invoke the container. The browser renders the interface before
+its one initial `/api/health` request finishes; that request starts a cold
+dictionary instance in the background. There is no keepalive polling.
+
+Frontend releases use immutable versioned keys for HTML, favicon, preview image
+and attribution files. Vite's hashed JS/CSS keys remain available across releases,
+so an already-open page can finish loading its assets after an update. HTML and
+preview files use `no-cache`; hashed assets use a one-year immutable cache.
+The static bucket has a 64 MiB size limit and denies anonymous read/list/config
+access. Public access goes through the same protected gateway.
 
 ## Limits
 
@@ -102,6 +118,27 @@ identifiers and Terraform state in ignored local files.
 
 ## Release
 
+Build the production frontend before either release command:
+
+```bash
+npm ci --prefix frontend
+npm run build --prefix frontend
+```
+
+For an interface-only release, publish static objects first and update gateway
+routes without redeploying the API or removing its invocation binding:
+
+```bash
+.venv/bin/python -m scripts.deploy_frontend \
+  --foundation output/foundation.json
+```
+
+This previews the static publication. Add `--apply` to publish and switch the
+gateway. Files are checksum-verified before connecting the new frontend. Previous
+release objects are retained for rollback; check bucket usage before it reaches
+the size limit. The script records the previous gateway metadata and new spec in
+ignored local release files.
+
 Authenticate Docker to the project's registry with a short-lived IAM token via
 `--password-stdin`. Push the image to
 `cr.yandex/REGISTRY_ID/semantic-calculator:VERSION` and obtain its registry digest.
@@ -124,7 +161,7 @@ the gateway with mandatory SWS protection and explicit API/frontend routes.
 
 The runtime account can pull images only from the project's registry. No
 authorized-key files or static cloud credentials are needed in the container.
-The gateway account can invoke only this container.
+The gateway account can invoke this container and read only the project's static bucket.
 
 ## Custom domain
 

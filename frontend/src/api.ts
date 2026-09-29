@@ -35,7 +35,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 const cache = new Map<string, Operand>();
-export const health = () => request<Model & { status: string }>("/api/health");
+// The gateway allows 10 seconds for a cold instance; leave time for the network.
+export const health = () => request<Model & { status: string }>("/api/health", {
+  signal: AbortSignal.timeout(15_000),
+});
 export const suggest = (prefix: string, signal: AbortSignal) =>
   request<{ words: string[] }>(
     `/api/words?prefix=${encodeURIComponent(prefix)}`,
